@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AZURE-CFT template.
+
+Parameters:
+  MykeyName:
+    Type: String 
+    Description: keypari for ec2 
+    
+  MyinstanceType: 
+    Description: Enter t2.micro, m1.small, or m1.large. Default is t2.micro.
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.large 
+
+  MyimageId:
+    Description: ami id 
+    Type: String
+    
+Resources:
+  MyEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref MyimageId
+      InstanceType: !Ref MyinstanceType
+      KeyName: !Ref MykeyName
+      SecurityGroups: 
+        - default
+        - !Ref SSHSecurityGroup
+
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: To Allow ssh connection for our instance
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      
+      
