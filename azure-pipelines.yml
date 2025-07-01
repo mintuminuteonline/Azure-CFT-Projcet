@@ -1,0 +1,73 @@
+# azure-pipelines.yml
+# This pipeline performs CI on all branch pushes and CD only on merges to 'main'.
+
+trigger:
+  # CI pipeline auto-triggers on any push to any branch (including local branches)
+  branches:
+    include:
+      - '*' # Triggers on all branches
+
+pr: none # Disable PR triggers for PR creation/updates, as CI runs on direct pushes to feature branches
+
+# Define variables for reusability and easy modification
+variables:
+  # Name of your AWS service connection configured in Azure DevOps
+  awsServiceConnection: 'aws-oidc-federation' # Ensure this matches your service connection name
+  # AWS region where resources will be deployed
+  awsRegion: 'us-east-1' # Replace with your desired AWS region (e.g., us-east-1, ap-south-1)
+  # *** UPDATED PATH based on https://github.com/mintuminuteonline/Azure-CFT-Projcet/blob/main/Ec2.yaml ***
+  cloudFormationTemplatePath: 'Ec2.yaml'
+  # Name for the CloudFormation stack that will be created/updated in AWS
+  cloudFormationStackName: 'MyNetworkAndEc2Stack' # You can customize this stack name
+
+jobs:
+- job: CI
+  displayName: 'Continuous Integration - Validate CloudFormation'
+  pool:
+    vmImage: 'ubuntu-latest' # Use a Microsoft-hosted agent for the build
+
+  steps:
+  - checkout: self
+    displayName: 'Checkout Code from GitHub'
+
+  - task: AwsCloudFormationValidateTemplate@1
+    displayName: 'Validate CloudFormation Template Syntax'
+    inputs:
+      awsCredentials: '$(awsServiceConnection)'
+      regionName: '$(awsRegion)'
+      templateSource: 'file'
+      templatePath: '$(cloudFormationTemplatePath)'
+
+- job: CD
+  displayName: 'Continuous Deployment - Deploy to AWS'
+  dependsOn: CI # This job will only start if the 'CI' job completes successfully
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  # This condition ensures the CD job runs only if:
+  # 1. The previous 'CI' job succeeded.
+  # 2. The pipeline was triggered by a commit to the 'main' branch (e.g., a merge).
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - checkout: self
+    displayName: 'Checkout Code for CD Deployment'
+
+  - task: AwsCloudFormationCreateUpdateStack@1
+    displayName: 'Create or Update CloudFormation Stack'
+    inputs:
+      awsCredentials: '$(awsServiceConnection)'
+      regionName: '$(awsRegion)'
+      stackName: '$(cloudFormationStackName)'
+      templateSource: 'file'
+      templatePath: '$(cloudFormationTemplatePath)'
+      # Required for CloudFormation templates that create/update IAM roles or other capabilities
+      # Your current template does NOT create IAM roles, but it's good practice to be aware.
+      capabilities: 'CAPABILITY_NAMED_IAM' # VPC, Security Groups, EC2 might not always need this, but it's safe to include for general infra
+      # If your template had parameters, you would define them here in JSON format:
+      # templateParameters: '[{"ParameterKey": "Environment", "ParameterValue": "Production"}]'
+      # You can also add tags to your CloudFormation stack:
+      tags: '[{"Key": "Project", "Value": "AzureCFTProject"}, {"Key": "Environment", "Value": "Production"}]'
+      # Set a timeout for the stack operation (in minutes). Default is 60.
+      # operationTimeout: '30'
+      # If you want the stack to be deleted if the pipeline fails, uncomment this:
+      # onFailure: 'DELETE_STACK'
