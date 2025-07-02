@@ -2,7 +2,8 @@
 trigger:
   branches:
     include:
-      - main # Trigger pipeline on push to main branch
+      - main # Trigger pipeline only on push to main branch
+pr: none # Disable PR triggers
 
 variables:
   awsServiceConnection: 'aws-oidc-federation' # AWS service connection name
@@ -18,7 +19,6 @@ jobs:
     steps:
       - checkout: self
         displayName: 'Checkout Code'
-
       - task: AWSShellScript@1
         displayName: 'Validate CloudFormation Template'
         inputs:
@@ -41,7 +41,6 @@ jobs:
           steps:
             - checkout: self
               displayName: 'Checkout Code'
-
             - task: AWSShellScript@1
               displayName: 'Deploy CloudFormation Stack'
               inputs:
