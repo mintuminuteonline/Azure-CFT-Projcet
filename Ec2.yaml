@@ -5,6 +5,7 @@ Parameters:
   MykeyName:
     Type: String 
     Description: keypari for ec2 
+    Default: cfn-keypair 
     
   MyinstanceType: 
     Description: Enter t2.micro, m1.small, or m1.large. Default is t2.micro.
@@ -18,6 +19,7 @@ Parameters:
   MyimageId:
     Description: ami id 
     Type: String
+    Default: ami-05ffe3c48a9991133 
     
 Resources:
   MyEc2Instance:
